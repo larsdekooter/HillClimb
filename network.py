@@ -57,6 +57,22 @@ class QTrainer:
         loss.backward()
         self.optimizer.step()
 
+    def trainSteps(self, states, actions, rewards, nextStates, dones):
+        states = torch.tensor(np.array(states), dtype=torch.float32)
+        actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1)
+        rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
+        nextStates = torch.tensor(np.array(nextStates), dtype=torch.float32)
+        dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
+
+        currenQValues = self.model(states).gather(1, actions)
+        nextQValues = self.model(nextStates).max(1)[0].detach().unsqueeze(1)
+        expectedQValues = rewards + (self.gamma * nextQValues + (1 - dones))
+
+        loss = self.criterion(currenQValues, expectedQValues)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
 
 class Network:
     def __init__(self) -> None:
@@ -97,4 +113,4 @@ class Network:
 
         batch = random.sample(self.memory, data.batchSize)
         states, actions, rewards, nextStates, dones = zip(*batch)
-        self.trainer.trainStep(states, actions, rewards, nextStates, dones)
+        self.trainer.trainSteps(states, actions, rewards, nextStates, dones)
