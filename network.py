@@ -39,34 +39,22 @@ class QTrainer:
         self.criterion = nn.MSELoss()
         self.model = model
 
-    def trainStep(self, state, action, reward, next_state, done):
-        state = torch.tensor(state, dtype=torch.float)
-        next_state = torch.tensor(next_state, dtype=torch.float)
-        action = torch.tensor(action, dtype=torch.int64)
-        reward = torch.tensor(reward, dtype=torch.float)
-        if len(state.shape) == 1:  # if one state gets passed in
-            state = torch.unsqueeze(state, 0)
-            next_state = torch.unsqueeze(next_state, 0)
-            reward = torch.unsqueeze(reward, 0)
-            action = torch.unsqueeze(action, 0)
-            done = (done,)
+    def trainStep(self, states, actions, rewards, nextStates, dones):
+        states = torch.tensor(np.array(states), dtype=torch.float32)
+        actions = torch.tensor(actions, dtype=torch.int64)  # .unsqueeze(1)
+        rewards = torch.tensor(rewards, dtype=torch.float32)  # .unsqueeze(1)
+        nextStates = torch.tensor(np.array(nextStates), dtype=torch.float32)
+        dones = torch.tensor(dones, dtype=torch.float32)  # .unsqueeze(1)
 
-        pred = self.model(state)
+        currenQValues = self.model(states)  # .gather(1, actions)
+        nextQValues = self.model(
+            nextStates
+        ).detach()  # .max(1)[0].detach().unsqueeze(1)
+        expectedQValues = rewards + (self.gamma * nextQValues * (1 - dones))
 
-        target = pred.clone()
-        for idx in range(len(done)):
-            Q_new = reward[idx]
-            if not done[idx]:
-                Q_new = reward[idx] + self.gamma * torch.max(
-                    self.model(next_state[idx])
-                )
-
-            target[idx][torch.argmax(action[idx]).item()] = Q_new
-
+        loss = self.criterion(currenQValues, expectedQValues)
         self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
         loss.backward()
-
         self.optimizer.step()
 
 
@@ -109,6 +97,4 @@ class Network:
 
         batch = random.sample(self.memory, data.batchSize)
         states, actions, rewards, nextStates, dones = zip(*batch)
-        self.trainer.trainStep(
-            np.array(states), actions, rewards, np.array(nextStates), dones
-        )
+        self.trainer.trainStep(states, actions, rewards, nextStates, dones)
