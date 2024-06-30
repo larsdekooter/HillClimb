@@ -36,7 +36,7 @@ class QTrainer:
         self.lr = data.lr
         self.gamma = data.gamma
         self.optimizer = optim.AdamW(model.parameters(), lr=self.lr)
-        self.criterion = nn.Smoothl1Loss()
+        self.criterion = nn.SmoothL1Loss()
         self.model = model
 
     def trainStep(self, states, actions, rewards, nextStates, dones):
