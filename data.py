@@ -5,3 +5,4 @@ minEpsilon = 0.1
 maxEpsilon = 1
 decayRate = 1e-5
 batchSize = 100
+tau = 0.005

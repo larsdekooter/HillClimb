@@ -17,13 +17,19 @@ while True:
     move = network.getMove(observation)
     oldstate = observation
     observation, reward, terminated, truncated, info = env.step(move)
-    network.remember(oldstate, move, reward, observation, terminated)
-    network.trainShort(oldstate, move, reward, observation, terminated)
+    network.remember(
+        oldstate,
+        move,
+        reward,
+        None if terminated or truncated else observation,
+        terminated or truncated,
+    )
+    network.trainShort()
 
     if terminated or truncated:
         ngames += 1
         observation, info = env.reset()
-        network.trainLong()
+        # network.trainLong()
         net = network.net
         rand = network.rand
         network.net = 0
@@ -34,6 +40,14 @@ while True:
         except:
             percentage = 0
 
-        print("Game", ngames, "%", percentage, "completion", round(((observation[0] + 1.2)/1.8) * 100.0, 2))
+        print(
+            "Game",
+            ngames,
+            "%",
+            percentage,
+            "completion",
+            round(((observation[0] + 1.2) / 1.8) * 100.0, 2),
+        )
+    network.trainer.updateModels()
 
 env.close()
