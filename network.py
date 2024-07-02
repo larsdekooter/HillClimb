@@ -146,7 +146,7 @@ class Network:
             -data.decayRate * self.decayStep
         )
 
-        if np.random.rand() < epsilon:
+        if np.random.random() < epsilon:
             move = random.randint(0, 2)
             self.rand += 1
         else:
