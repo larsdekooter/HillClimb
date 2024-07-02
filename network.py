@@ -26,6 +26,9 @@ class Memory(object):
     def __len__(self):
         return len(self.memory)
 
+    def last(self):
+        return self.memory[-1]
+
 
 class LinearQNet(nn.Module):
     def __init__(self, input_size, hidden_size, hidden_size2, output_size):
@@ -59,40 +62,6 @@ class QTrainer:
         self.policyModel = policyModel
         self.targetModel = targetModel
 
-    def trainStep(self, states, actions, rewards, nextStates, dones):
-        states = torch.tensor(np.array(states), dtype=torch.float32)
-        actions = torch.tensor(actions, dtype=torch.int64)  # .unsqueeze(1)
-        rewards = torch.tensor(rewards, dtype=torch.float32)  # .unsqueeze(1)
-        nextStates = torch.tensor(np.array(nextStates), dtype=torch.float32)
-        dones = torch.tensor(dones, dtype=torch.float32)  # .unsqueeze(1)
-
-        currenQValues = self.model(states)  # .gather(1, actions)
-        nextQValues = self.model(
-            nextStates
-        ).detach()  # .max(1)[0].detach().unsqueeze(1)
-        expectedQValues = rewards + (self.gamma * nextQValues * (1 - dones))
-
-        loss = self.criterion(currenQValues, expectedQValues)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-    def trainSteps(self, states, actions, rewards, nextStates, dones):
-        states = torch.tensor(np.array(states), dtype=torch.float32)
-        actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1)
-        rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
-        nextStates = torch.tensor(np.array(nextStates), dtype=torch.float32)
-        dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
-
-        currenQValues = self.model(states).gather(1, actions)
-        nextQValues = self.model(nextStates).max(1)[0].detach().unsqueeze(1)
-        expectedQValues = rewards + (self.gamma * nextQValues + (1 - dones))
-
-        loss = self.criterion(currenQValues, expectedQValues)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
     def updateModels(self):
         tDict = self.targetModel.state_dict()
         pDict = self.policyModel.state_dict()
@@ -114,6 +83,31 @@ class QTrainer:
         rewardBatch = torch.cat(batch.reward)
         stateActionValues = self.policyModel(stateBatch).gather(1, actionBatch)
         nextStateValues = torch.zeros(data.batchSize)
+        with torch.no_grad():
+            nextStateValues[nonFinalMask] = (
+                self.targetModel(nonFinalNextStates).max(1).values
+            )
+
+        expectedStateActionValues = (nextStateValues * data.gamma) + rewardBatch
+        loss = self.criterion(stateActionValues, expectedStateActionValues.unsqueeze(1))
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_value_(self.policyModel.parameters(), 100)
+        self.optimizer.step()
+
+    def torchTrainStep1(self, batch):
+
+        nonFinalMask = torch.tensor(
+            tuple(map(lambda s: s is not None, batch.nextState)), dtype=torch.bool
+        )
+        nonFinalNextStates = torch.cat([s for s in batch.nextState if s is not None])
+
+        stateBatch = torch.cat(batch.state)
+        actionBatch = torch.cat(batch.action)
+        rewardBatch = torch.cat(batch.reward)
+        stateActionValues = self.policyModel(stateBatch).gather(1, actionBatch)
+        nextStateValues = torch.zeros(1)
         with torch.no_grad():
             nextStateValues[nonFinalMask] = (
                 self.targetModel(nonFinalNextStates).max(1).values
@@ -160,11 +154,18 @@ class Network:
         self.decayStep += 1
         return move
 
-    def trainShort(self):
+    def trainLong(self):
         if len(self.memory) < data.batchSize:
             return
         transitions = self.memory.sample(data.batchSize)
         self.trainer.torchTrainStep(transitions)
+
+    def trainShort(self):
+        transitions = [self.memory.last()]
+        batch = Transition(*zip(*transitions))
+        if batch.nextState[0] == None:
+            return
+        self.trainer.torchTrainStep1(batch)
 
     def remember(self, state, action, reward, nextState, done):
         self.memory.push(

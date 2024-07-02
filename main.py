@@ -51,6 +51,7 @@ while True:
 
         if ngames % 1000 == 0:
             network.policyModel.save()
-    network.trainer.updateModels()
+        network.trainLong()
+        network.trainer.updateModels()
 
 env.close()
