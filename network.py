@@ -134,6 +134,8 @@ class Network:
         self.gamma = data.gamma
         self.memory = Memory(10000)
         self.policyModel = LinearQNet(2, data.hiddenSize, data.hiddenSize, 3).to(device)
+        if os.path.exists("./model/model.pth"):
+            self.policyModel.load_state_dict(torch.load("./model/model.pth"))
         self.targetModel = LinearQNet(2, data.hiddenSize, data.hiddenSize, 3).to(device)
         self.targetModel.load_state_dict(self.policyModel.state_dict())
         self.trainer = QTrainer(self.policyModel, self.targetModel)

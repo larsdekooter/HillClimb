@@ -48,6 +48,9 @@ while True:
             "completion",
             round(((observation[0] + 1.2) / 1.8) * 100.0, 2),
         )
+
+        if ngames % 1000 == 0:
+            network.policyModel.save()
     network.trainer.updateModels()
 
 env.close()
