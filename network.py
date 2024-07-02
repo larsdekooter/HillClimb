@@ -180,10 +180,10 @@ class Network:
             torch.tensor(np.array([done]), dtype=torch.int),
         )
 
-    def trainLong(self):
-        if len(self.memory) < data.batchSize:
-            return
+    # def trainLong(self):
+    #     if len(self.memory) < data.batchSize:
+    #         return
 
-        batch = random.sample(self.memory, data.batchSize)
-        states, actions, rewards, nextStates, dones = zip(*batch)
-        self.trainer.trainSteps(states, actions, rewards, nextStates, dones)
+    #     batch = random.sample(self.memory, data.batchSize)
+    #     states, actions, rewards, nextStates, dones = zip(*batch)
+    #     self.trainer.trainSteps(states, actions, rewards, nextStates, dones)
