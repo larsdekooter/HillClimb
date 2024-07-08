@@ -165,7 +165,7 @@ class Network:
         batch = Transition(*zip(*transitions))
         if batch.nextState[0] == None:
             return
-        self.trainer.torchTrainStep1(batch)
+        self.trainer.torchTrainStep(batch)
 
     def remember(self, state, action, reward, nextState, done):
         self.memory.push(
