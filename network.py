@@ -161,11 +161,12 @@ class Network:
         self.trainer.torchTrainStep(transitions)
 
     def trainShort(self):
-        transitions = [self.memory.last()]
-        batch = Transition(*zip(*transitions))
-        if batch.nextState[0] == None:
-            return
-        self.trainer.torchTrainStep(batch)
+        # transitions = [self.memory.last()]
+        # batch = Transition(*zip(*transitions))
+        # if batch.nextState[0] == None:
+        #     return
+        # self.trainer.torchTrainStep(batch)
+        self.trainLong()
 
     def remember(self, state, action, reward, nextState, done):
         self.memory.push(
